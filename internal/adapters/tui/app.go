@@ -35,8 +35,8 @@ var DefaultKeyMap = KeyMap{
 
 // App is the main application model
 type App struct {
-	character  *domain.Character
-	repository ports.CharacterRepository
+	character   *domain.Character
+	repository  ports.CharacterRepository
 	currentView views.ViewType
 
 	// Sub-models for each view

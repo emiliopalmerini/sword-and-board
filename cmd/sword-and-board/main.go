@@ -37,8 +37,8 @@ func main() {
 func findDataFile() string {
 	// Check common locations in order of preference
 	locations := []string{
-		"data/dissimotis.yaml",                    // Current directory
-		"./data/dissimotis.yaml",                  // Explicit current directory
+		"data/dissimotis.yaml",   // Current directory
+		"./data/dissimotis.yaml", // Explicit current directory
 		filepath.Join(getExecutableDir(), "data", "dissimotis.yaml"), // Next to executable
 	}
 

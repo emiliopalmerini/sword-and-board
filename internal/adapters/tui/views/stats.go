@@ -13,11 +13,11 @@ import (
 
 // StatsKeyMap defines key bindings for the stats view
 type StatsKeyMap struct {
-	Up       key.Binding
-	Down     key.Binding
-	Use      key.Binding
-	Restore  key.Binding
-	Rest     key.Binding
+	Up      key.Binding
+	Down    key.Binding
+	Use     key.Binding
+	Restore key.Binding
+	Rest    key.Binding
 }
 
 var DefaultStatsKeyMap = StatsKeyMap{
@@ -30,9 +30,9 @@ var DefaultStatsKeyMap = StatsKeyMap{
 
 // StatsModel handles the stats view
 type StatsModel struct {
-	Character      *domain.Character
-	selectedIndex  int
-	keyMap         StatsKeyMap
+	Character     *domain.Character
+	selectedIndex int
+	keyMap        StatsKeyMap
 }
 
 // NewStatsModel creates a new stats view model

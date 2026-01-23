@@ -14,15 +14,15 @@ import (
 
 // SpellsKeyMap defines key bindings for the spells view
 type SpellsKeyMap struct {
-	Up     key.Binding
-	Down   key.Binding
-	Use    key.Binding
+	Up      key.Binding
+	Down    key.Binding
+	Use     key.Binding
 	Restore key.Binding
-	Rest   key.Binding
-	Add    key.Binding
-	Delete key.Binding
-	Enter  key.Binding
-	Escape key.Binding
+	Rest    key.Binding
+	Add     key.Binding
+	Delete  key.Binding
+	Enter   key.Binding
+	Escape  key.Binding
 }
 
 var DefaultSpellsKeyMap = SpellsKeyMap{
@@ -54,8 +54,8 @@ type SpellsModel struct {
 	keyMap        SpellsKeyMap
 
 	// Input fields for add
-	nameInput  textinput.Model
-	usesInput  textinput.Model
+	nameInput   textinput.Model
+	usesInput   textinput.Model
 	activeInput int
 }
 
