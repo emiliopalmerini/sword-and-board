@@ -101,6 +101,7 @@ func (m *StatsModel) View() string {
 		{"Poise Points", fmt.Sprintf("%d", m.Character.Stats.PoisePoints)},
 		{"Damage", fmt.Sprintf("%d - %s", m.Character.Stats.DamageTaken, m.Character.Stats.DamageNote)},
 		{"Special", m.Character.Stats.Special},
+		{"Parry & Repost", m.Character.Stats.ParryAndRepost},
 		{"Mentor", m.Character.Mentor},
 	}
 

@@ -9,6 +9,7 @@ stats:
     damage_taken: 2
     damage_note: electrocuted by the charge of the executioner
     special: +2d when defending others
+    parry_and_repost: 2 board success -> attack
 resources:
     - name: Estus Flask
       total: 2

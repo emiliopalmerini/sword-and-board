@@ -14,12 +14,13 @@ type Character struct {
 
 // Stats holds the character's core statistics
 type Stats struct {
-	Poise       int    `yaml:"poise"`
-	PoiseDie    string `yaml:"poise_die"`
-	PoisePoints int    `yaml:"poise_points"`
-	DamageTaken int    `yaml:"damage_taken"`
-	DamageNote  string `yaml:"damage_note"`
-	Special     string `yaml:"special"`
+	Poise          int    `yaml:"poise"`
+	PoiseDie       string `yaml:"poise_die"`
+	PoisePoints    int    `yaml:"poise_points"`
+	DamageTaken    int    `yaml:"damage_taken"`
+	DamageNote     string `yaml:"damage_note"`
+	Special        string `yaml:"special"`
+	ParryAndRepost string `yaml:"parry_and_repost,omitempty"`
 }
 
 // Resource represents a consumable resource like Estus Flask
