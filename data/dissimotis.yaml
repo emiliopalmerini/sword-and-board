@@ -1,0 +1,56 @@
+name: Sir Dissimotis
+class: knight
+faith_path: Sun
+mentor: Solaire
+
+stats:
+  poise: 7
+  poise_die: d10
+  poise_points: 1
+  damage_taken: 2
+  damage_note: electrocuted by the charge of the executioner
+  special: "+2d when defending others"
+
+resources:
+  - name: Estus Flask
+    total: 2
+    remaining: 0
+
+inventory:
+  - name: Broadsword
+    quantity: 1
+    type: Weapon
+    notes: Less physical damage + more magic damage
+  - name: Kite Shield
+    quantity: 1
+    type: Weapon
+  - name: Lightning Thrusting Sword
+    quantity: 1
+    type: Weapon
+  - name: White Covenant's Talisman
+    quantity: 1
+    type: Equipment
+    notes: Gwynevere
+  - name: Small Bell Charm
+    quantity: 1
+    type: Equipment
+    notes: Cast simple lightning spear
+  - name: Curse Trinkets
+    quantity: 1
+    type: Consumable
+    notes: To be cursed (maybe useful with ghost)
+  - name: Purging Stone
+    quantity: 1
+    type: Consumable
+    notes: Stone with a face inside, clinging to life
+
+spells:
+  - name: Prayer of Heal
+    total_uses: 6
+    used: 0
+  - name: Seek Guidance
+    total_uses: 1
+    used: 0
+  - name: Lightning
+    total_uses: 10
+    used: 1

@@ -1,0 +1,17 @@
+# Binaries
+sword-and-board
+
+# Dependencies
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+
+# Nix
+result
