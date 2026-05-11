@@ -243,6 +243,11 @@ func (m *SpellsModel) submitSpell() (tea.Model, tea.Cmd) {
 	}
 }
 
+// IsInputMode returns true when the view is capturing text input
+func (m *SpellsModel) IsInputMode() bool {
+	return m.mode == SpellsModeAdd
+}
+
 // View implements tea.Model
 func (m *SpellsModel) View() string {
 	var b strings.Builder
@@ -261,6 +266,16 @@ func (m *SpellsModel) View() string {
 	}
 
 	b.WriteString(styles.SectionStyle.Render("SPELLS") + "\n\n")
+
+	if len(m.Character.Spells) == 0 {
+		b.WriteString(styles.EmptyStateStyle.Render("No spells known. Press [a] to add one.") + "\n\n")
+
+		help := []string{
+			styles.KeyStyle.Render("[a]") + " add",
+		}
+		b.WriteString(styles.HelpStyle.Render(strings.Join(help, "  ")))
+		return b.String()
+	}
 
 	for i, spell := range m.Character.Spells {
 		cursor := "  "

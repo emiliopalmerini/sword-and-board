@@ -17,10 +17,19 @@ type Stats struct {
 	Poise          int    `yaml:"poise"`
 	PoiseDie       string `yaml:"poise_die"`
 	PoisePoints    int    `yaml:"poise_points"`
+	MaxHP          int    `yaml:"max_hp,omitempty"`
 	DamageTaken    int    `yaml:"damage_taken"`
 	DamageNote     string `yaml:"damage_note"`
 	Special        string `yaml:"special"`
 	ParryAndRepost string `yaml:"parry_and_repost,omitempty"`
+}
+
+// EffectiveMaxHP returns MaxHP if set, falling back to default 10.
+func (s Stats) EffectiveMaxHP() int {
+	if s.MaxHP > 0 {
+		return s.MaxHP
+	}
+	return 10
 }
 
 // Resource represents a consumable resource like Estus Flask

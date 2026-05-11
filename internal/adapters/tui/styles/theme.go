@@ -105,6 +105,25 @@ var (
 			Foreground(ColorDarkGray).
 			SetString("○")
 
+	// HP bar styles
+	HPFilled = lipgloss.NewStyle().
+			Foreground(ColorGreen).
+			SetString("█")
+
+	HPEmpty = lipgloss.NewStyle().
+		Foreground(ColorRed).
+		SetString("░")
+
+	// Tab separator line
+	TabSeparatorStyle = lipgloss.NewStyle().
+				Foreground(ColorDarkGray)
+
+	// Empty state hint
+	EmptyStateStyle = lipgloss.NewStyle().
+			Foreground(ColorLightGray).
+			Italic(true).
+			MarginLeft(2)
+
 	// Item type colors
 	WeaponStyle = lipgloss.NewStyle().
 			Foreground(ColorOrange)
@@ -127,6 +146,9 @@ var (
 func RenderDots(filled, total int, filledStyle, emptyStyle lipgloss.Style) string {
 	result := ""
 	for i := 0; i < total; i++ {
+		if i > 0 {
+			result += " "
+		}
 		if i < filled {
 			result += filledStyle.String()
 		} else {
@@ -145,4 +167,21 @@ func RenderResourceDots(remaining, total int) string {
 func RenderSpellDots(used, total int) string {
 	remaining := total - used
 	return RenderDots(remaining, total, SpellAvailable, SpellUsed)
+}
+
+// RenderHPBar renders a visual HP bar given damage taken and a max HP estimate
+func RenderHPBar(damageTaken, maxHP int) string {
+	remaining := maxHP - damageTaken
+	if remaining < 0 {
+		remaining = 0
+	}
+	result := ""
+	for i := 0; i < maxHP; i++ {
+		if i < remaining {
+			result += HPFilled.String()
+		} else {
+			result += HPEmpty.String()
+		}
+	}
+	return result
 }

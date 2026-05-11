@@ -43,6 +43,23 @@ const (
 	InventoryModeConfirmDelete
 )
 
+// itemTypeCycle is the cycle order for the type field in the add/edit form.
+var itemTypeCycle = []domain.ItemType{
+	domain.ItemTypeWeapon,
+	domain.ItemTypeEquipment,
+	domain.ItemTypeConsumable,
+}
+
+// indexOfItemType returns the cycle index for an item type, or 1 (Equipment) if unknown.
+func indexOfItemType(t domain.ItemType) int {
+	for i, it := range itemTypeCycle {
+		if it == t {
+			return i
+		}
+	}
+	return 1
+}
+
 // InventoryModel handles the inventory view
 type InventoryModel struct {
 	Character     *domain.Character
@@ -53,7 +70,7 @@ type InventoryModel struct {
 	// Input fields for add/edit
 	nameInput     textinput.Model
 	quantityInput textinput.Model
-	typeInput     textinput.Model
+	typeIndex     int
 	notesInput    textinput.Model
 	activeInput   int
 }
@@ -74,10 +91,6 @@ func NewInventoryModel(Character *domain.Character) *InventoryModel {
 	m.quantityInput = textinput.New()
 	m.quantityInput.Placeholder = "1"
 	m.quantityInput.CharLimit = 3
-
-	m.typeInput = textinput.New()
-	m.typeInput.Placeholder = "Weapon/Equipment/Consumable"
-	m.typeInput.CharLimit = 20
 
 	m.notesInput = textinput.New()
 	m.notesInput.Placeholder = "Notes (optional)"
@@ -129,7 +142,7 @@ func (m *InventoryModel) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			item := m.Character.Inventory[m.selectedIndex]
 			m.nameInput.SetValue(item.Name)
 			m.quantityInput.SetValue(fmt.Sprintf("%d", item.Quantity))
-			m.typeInput.SetValue(string(item.Type))
+			m.typeIndex = indexOfItemType(item.Type)
 			m.notesInput.SetValue(item.Notes)
 			m.nameInput.Focus()
 			return m, textinput.Blink
@@ -149,12 +162,10 @@ func (m *InventoryModel) updateInputMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case key.Matches(msg, m.keyMap.Enter):
 		if m.activeInput < 3 {
-			// Move to next input
 			m.activeInput++
 			m.focusActiveInput()
 			return m, textinput.Blink
 		}
-		// Submit
 		return m.submitItem()
 	case msg.String() == "tab":
 		m.activeInput = (m.activeInput + 1) % 4
@@ -166,15 +177,23 @@ func (m *InventoryModel) updateInputMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, textinput.Blink
 	}
 
-	// Update the active input
+	// Type field cycles with left/right; other fields use textinput.
+	if m.activeInput == 2 {
+		switch msg.String() {
+		case "left", "h":
+			m.typeIndex = (m.typeIndex + len(itemTypeCycle) - 1) % len(itemTypeCycle)
+		case "right", "l", " ":
+			m.typeIndex = (m.typeIndex + 1) % len(itemTypeCycle)
+		}
+		return m, nil
+	}
+
 	var cmd tea.Cmd
 	switch m.activeInput {
 	case 0:
 		m.nameInput, cmd = m.nameInput.Update(msg)
 	case 1:
 		m.quantityInput, cmd = m.quantityInput.Update(msg)
-	case 2:
-		m.typeInput, cmd = m.typeInput.Update(msg)
 	case 3:
 		m.notesInput, cmd = m.notesInput.Update(msg)
 	}
@@ -201,7 +220,7 @@ func (m *InventoryModel) updateConfirmDelete(msg tea.KeyMsg) (tea.Model, tea.Cmd
 func (m *InventoryModel) clearInputs() {
 	m.nameInput.SetValue("")
 	m.quantityInput.SetValue("")
-	m.typeInput.SetValue("")
+	m.typeIndex = 1 // default Equipment
 	m.notesInput.SetValue("")
 	m.activeInput = 0
 }
@@ -209,7 +228,6 @@ func (m *InventoryModel) clearInputs() {
 func (m *InventoryModel) focusActiveInput() {
 	m.nameInput.Blur()
 	m.quantityInput.Blur()
-	m.typeInput.Blur()
 	m.notesInput.Blur()
 
 	switch m.activeInput {
@@ -217,8 +235,6 @@ func (m *InventoryModel) focusActiveInput() {
 		m.nameInput.Focus()
 	case 1:
 		m.quantityInput.Focus()
-	case 2:
-		m.typeInput.Focus()
 	case 3:
 		m.notesInput.Focus()
 	}
@@ -238,11 +254,8 @@ func (m *InventoryModel) submitItem() (tea.Model, tea.Cmd) {
 	}
 
 	itemType := domain.ItemTypeEquipment
-	switch strings.ToLower(m.typeInput.Value()) {
-	case "weapon", "w":
-		itemType = domain.ItemTypeWeapon
-	case "consumable", "c":
-		itemType = domain.ItemTypeConsumable
+	if m.typeIndex >= 0 && m.typeIndex < len(itemTypeCycle) {
+		itemType = itemTypeCycle[m.typeIndex]
 	}
 
 	item := domain.Item{
@@ -267,6 +280,11 @@ func (m *InventoryModel) submitItem() (tea.Model, tea.Cmd) {
 	}
 }
 
+// IsInputMode returns true when the view is capturing text input
+func (m *InventoryModel) IsInputMode() bool {
+	return m.mode == InventoryModeAdd || m.mode == InventoryModeEdit
+}
+
 // View implements tea.Model
 func (m *InventoryModel) View() string {
 	var b strings.Builder
@@ -285,6 +303,16 @@ func (m *InventoryModel) View() string {
 	}
 
 	b.WriteString(styles.SectionStyle.Render("INVENTORY") + "\n\n")
+
+	if len(m.Character.Inventory) == 0 {
+		b.WriteString(styles.EmptyStateStyle.Render("No items. Press [a] to add one.") + "\n\n")
+
+		help := []string{
+			styles.KeyStyle.Render("[a]") + " add",
+		}
+		b.WriteString(styles.HelpStyle.Render(strings.Join(help, "  ")))
+		return b.String()
+	}
 
 	// Group items by type
 	itemsByType := m.Character.ItemsByType()
@@ -328,12 +356,15 @@ func (m *InventoryModel) View() string {
 			}
 
 			name := nameStyle.Render(item.Name)
-			qty := styles.DimmedStyle.Render(fmt.Sprintf("(%d)", item.Quantity))
-			b.WriteString(fmt.Sprintf("%s%s %s\n", cursor, name, qty))
-
-			if item.Notes != "" && itemIdx == m.selectedIndex {
-				b.WriteString("      " + styles.DimmedStyle.Render(item.Notes) + "\n")
+			qty := ""
+			if item.Quantity > 1 {
+				qty = " " + styles.DimmedStyle.Render(fmt.Sprintf("x%d", item.Quantity))
 			}
+			notes := ""
+			if item.Notes != "" {
+				notes = " " + styles.DimmedStyle.Render("— "+item.Notes)
+			}
+			b.WriteString(fmt.Sprintf("%s%s%s%s\n", cursor, name, qty, notes))
 
 			currentIdx++
 		}
@@ -361,32 +392,61 @@ func (m *InventoryModel) viewInputForm() string {
 	}
 	b.WriteString(styles.SectionStyle.Render(title) + "\n\n")
 
-	inputs := []struct {
-		label string
-		input textinput.Model
-	}{
-		{"Name", m.nameInput},
-		{"Quantity", m.quantityInput},
-		{"Type", m.typeInput},
-		{"Notes", m.notesInput},
-	}
-
-	for i, inp := range inputs {
+	labels := []string{"Name", "Quantity", "Type", "Notes"}
+	for i, label := range labels {
 		style := styles.NormalStyle
 		if i == m.activeInput {
 			style = styles.SelectedStyle
 		}
-		b.WriteString(fmt.Sprintf("  %s\n", style.Render(inp.label)))
-		b.WriteString(fmt.Sprintf("  %s\n\n", inp.input.View()))
+		b.WriteString(fmt.Sprintf("  %s\n", style.Render(label)))
+
+		var renderedField string
+		switch i {
+		case 0:
+			renderedField = m.nameInput.View()
+		case 1:
+			renderedField = m.quantityInput.View()
+		case 2:
+			renderedField = m.renderTypeField()
+		case 3:
+			renderedField = m.notesInput.View()
+		}
+		b.WriteString(fmt.Sprintf("  %s\n\n", renderedField))
 	}
 
-	// Help
 	help := []string{
 		styles.KeyStyle.Render("[tab]") + " next field",
+		styles.KeyStyle.Render("[←/→]") + " cycle type",
 		styles.KeyStyle.Render("[enter]") + " submit",
 		styles.KeyStyle.Render("[esc]") + " cancel",
 	}
 	b.WriteString(styles.HelpStyle.Render(strings.Join(help, "  ")))
 
 	return b.String()
+}
+
+// renderTypeField shows the current type with neighbors visible to suggest cycling.
+func (m *InventoryModel) renderTypeField() string {
+	var parts []string
+	for i, t := range itemTypeCycle {
+		var styled string
+		if i == m.typeIndex {
+			var colored string
+			switch t {
+			case domain.ItemTypeWeapon:
+				colored = styles.WeaponStyle.Render(string(t))
+			case domain.ItemTypeEquipment:
+				colored = styles.EquipmentStyle.Render(string(t))
+			case domain.ItemTypeConsumable:
+				colored = styles.ConsumableStyle.Render(string(t))
+			default:
+				colored = string(t)
+			}
+			styled = styles.SelectedStyle.Render("‹ ") + colored + styles.SelectedStyle.Render(" ›")
+		} else {
+			styled = styles.DimmedStyle.Render(string(t))
+		}
+		parts = append(parts, styled)
+	}
+	return strings.Join(parts, "  ")
 }

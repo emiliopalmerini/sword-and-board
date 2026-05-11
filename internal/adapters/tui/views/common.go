@@ -55,3 +55,8 @@ type StatusMsg struct {
 	Message string
 	IsError bool
 }
+
+// ClearStatusMsg signals the App to clear the status line when its Gen matches the current generation.
+type ClearStatusMsg struct {
+	Gen int
+}

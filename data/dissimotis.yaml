@@ -3,10 +3,11 @@ class: knight
 faith_path: Sun
 mentor: Solaire
 stats:
-    poise: 7
+    poise: 6
     poise_die: d10
-    poise_points: 1
-    damage_taken: 2
+    poise_points: 0
+    max_hp: 10
+    damage_taken: 3
     damage_note: electrocuted by the charge of the executioner
     special: +2d when defending others
     parry_and_repost: 2 board success -> attack
@@ -41,13 +42,17 @@ inventory:
       quantity: 1
       type: Consumable
       notes: Stone with a face inside, clinging to life
+    - name: Wolf head medallion
+      quantity: 1
+      type: Equipment
+      notes: Maybe artorius direction
 spells:
     - name: Prayer of Heal
       total_uses: 6
-      used: 0
+      used: 1
     - name: Seek Guidance
       total_uses: 1
-      used: 0
+      used: 1
     - name: Lightning
       total_uses: 10
-      used: 1
+      used: 4
