@@ -8,7 +8,6 @@ stats:
     poise_points: 0
     max_hp: 10
     damage_taken: 2
-    damage_note: ""
     special: +2d when defending others
     parry_and_repost: 2 board success -> attack
 resources:
@@ -49,7 +48,7 @@ inventory:
 spells:
     - name: Prayer of Heal
       total_uses: 6
-      used: 2
+      used: 3
     - name: Seek Guidance
       total_uses: 1
       used: 1
