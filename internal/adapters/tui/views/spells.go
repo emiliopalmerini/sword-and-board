@@ -56,9 +56,10 @@ type SpellsModel struct {
 	mode          SpellsMode
 	keyMap        SpellsKeyMap
 
-	// Input fields for add
+	// Input fields for add/edit
 	nameInput   textinput.Model
 	usesInput   textinput.Model
+	usedInput   textinput.Model
 	activeInput int
 }
 
@@ -77,6 +78,10 @@ func NewSpellsModel(Character *domain.Character) *SpellsModel {
 	m.usesInput = textinput.New()
 	m.usesInput.Placeholder = "Total uses"
 	m.usesInput.CharLimit = 3
+
+	m.usedInput = textinput.New()
+	m.usedInput.Placeholder = "Used"
+	m.usedInput.CharLimit = 3
 
 	return m
 }
@@ -148,6 +153,7 @@ func (m *SpellsModel) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			spell := m.Character.Spells[m.selectedIndex]
 			m.nameInput.SetValue(spell.Name)
 			m.usesInput.SetValue(fmt.Sprintf("%d", spell.TotalUses))
+			m.usedInput.SetValue(fmt.Sprintf("%d", spell.Used))
 			m.activeInput = 0
 			m.nameInput.Focus()
 			return m, textinput.Blink
@@ -166,18 +172,18 @@ func (m *SpellsModel) updateInputMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.mode = SpellsModeNormal
 		return m, nil
 	case key.Matches(msg, m.keyMap.Enter):
-		if m.activeInput < 1 {
+		if m.activeInput < 2 {
 			m.activeInput++
 			m.focusActiveInput()
 			return m, textinput.Blink
 		}
 		return m.submitSpell()
 	case msg.String() == "tab":
-		m.activeInput = (m.activeInput + 1) % 2
+		m.activeInput = (m.activeInput + 1) % 3
 		m.focusActiveInput()
 		return m, textinput.Blink
 	case msg.String() == "shift+tab":
-		m.activeInput = (m.activeInput + 1) % 2
+		m.activeInput = (m.activeInput + 2) % 3
 		m.focusActiveInput()
 		return m, textinput.Blink
 	}
@@ -188,6 +194,8 @@ func (m *SpellsModel) updateInputMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.nameInput, cmd = m.nameInput.Update(msg)
 	case 1:
 		m.usesInput, cmd = m.usesInput.Update(msg)
+	case 2:
+		m.usedInput, cmd = m.usedInput.Update(msg)
 	}
 	return m, cmd
 }
@@ -210,18 +218,22 @@ func (m *SpellsModel) updateConfirmDelete(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *SpellsModel) clearInputs() {
 	m.nameInput.SetValue("")
 	m.usesInput.SetValue("")
+	m.usedInput.SetValue("")
 	m.activeInput = 0
 }
 
 func (m *SpellsModel) focusActiveInput() {
 	m.nameInput.Blur()
 	m.usesInput.Blur()
+	m.usedInput.Blur()
 
 	switch m.activeInput {
 	case 0:
 		m.nameInput.Focus()
 	case 1:
 		m.usesInput.Focus()
+	case 2:
+		m.usedInput.Focus()
 	}
 }
 
@@ -237,21 +249,24 @@ func (m *SpellsModel) submitSpell() (tea.Model, tea.Cmd) {
 	if err != nil {
 		return m, statusCmd("Total uses must be a positive number", true)
 	}
+	used, err := parseNonNegativeInt(m.usedInput.Value(), 0)
+	if err != nil {
+		return m, statusCmd("Used count must be zero or a positive number", true)
+	}
+	if used > uses {
+		return m, statusCmd("Used count cannot be greater than total uses", true)
+	}
 
 	spell := domain.Spell{
 		Name:      name,
 		TotalUses: uses,
-		Used:      0,
+		Used:      used,
 	}
 
 	if m.mode == SpellsModeAdd {
 		m.Character.AddSpell(spell)
 		m.selectedIndex = len(m.Character.Spells) - 1
 	} else {
-		spell.Used = m.Character.Spells[m.selectedIndex].Used
-		if spell.Used > spell.TotalUses {
-			spell.Used = spell.TotalUses
-		}
 		m.Character.Spells[m.selectedIndex] = spell
 	}
 
@@ -340,6 +355,7 @@ func (m *SpellsModel) viewInputForm() string {
 	}{
 		{"Name", m.nameInput},
 		{"Total Uses", m.usesInput},
+		{"Used", m.usedInput},
 	}
 
 	for i, inp := range inputs {

@@ -92,3 +92,17 @@ func parsePositiveInt(value string, fallback int) (int, error) {
 
 	return n, nil
 }
+
+func parseNonNegativeInt(value string, fallback int) (int, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return fallback, nil
+	}
+
+	n, err := strconv.Atoi(value)
+	if err != nil || n < 0 {
+		return 0, fmt.Errorf("must be zero or a positive number")
+	}
+
+	return n, nil
+}

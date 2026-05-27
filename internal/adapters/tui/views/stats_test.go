@@ -72,6 +72,75 @@ func TestHealPromptDoesNotChangeFullHP(t *testing.T) {
 	}
 }
 
+func TestEditProfileField(t *testing.T) {
+	character := &domain.Character{Name: "Sir Dissimotis"}
+	model := NewStatsModel(character)
+
+	model = updateStatsModel(t, model, keyRune('e'))
+	if !model.editing {
+		t.Fatal("expected field editor to be open")
+	}
+
+	model.editInput.SetValue("Lady Dissimotis")
+	model = updateStatsModel(t, model, keyType(tea.KeyEnter))
+
+	if got := character.Name; got != "Lady Dissimotis" {
+		t.Fatalf("name = %q, want %q", got, "Lady Dissimotis")
+	}
+}
+
+func TestAddResource(t *testing.T) {
+	character := &domain.Character{}
+	model := NewStatsModel(character)
+
+	model = updateStatsModel(t, model, keyRune('a'))
+	if !model.editingResource {
+		t.Fatal("expected resource form to be open")
+	}
+
+	model.resourceNameInput.SetValue("Estus Flask")
+	model.resourceTotalInput.SetValue("2")
+	model.resourceRemainingInput.SetValue("1")
+	model = updateStatsModel(t, model, keyType(tea.KeyEnter))
+	model = updateStatsModel(t, model, keyType(tea.KeyEnter))
+	model = updateStatsModel(t, model, keyType(tea.KeyEnter))
+
+	if got := len(character.Resources); got != 1 {
+		t.Fatalf("resource count = %d, want 1", got)
+	}
+	resource := character.Resources[0]
+	if resource.Name != "Estus Flask" || resource.Total != 2 || resource.Remaining != 1 {
+		t.Fatalf("resource = %+v, want Estus Flask 1/2", resource)
+	}
+}
+
+func TestEditSelectedResource(t *testing.T) {
+	character := &domain.Character{
+		Resources: []domain.Resource{
+			{Name: "Estus Flask", Total: 2, Remaining: 1},
+		},
+	}
+	model := NewStatsModel(character)
+	model.selectedIndex = len(model.statsFields())
+
+	model = updateStatsModel(t, model, keyRune('e'))
+	if !model.editingResource {
+		t.Fatal("expected resource form to be open")
+	}
+
+	model.resourceNameInput.SetValue("Ashen Estus")
+	model.resourceTotalInput.SetValue("3")
+	model.resourceRemainingInput.SetValue("2")
+	model = updateStatsModel(t, model, keyType(tea.KeyEnter))
+	model = updateStatsModel(t, model, keyType(tea.KeyEnter))
+	model = updateStatsModel(t, model, keyType(tea.KeyEnter))
+
+	resource := character.Resources[0]
+	if resource.Name != "Ashen Estus" || resource.Total != 3 || resource.Remaining != 2 {
+		t.Fatalf("resource = %+v, want Ashen Estus 2/3", resource)
+	}
+}
+
 func updateStatsModel(t *testing.T, model *StatsModel, msg tea.Msg) *StatsModel {
 	t.Helper()
 
