@@ -3,12 +3,12 @@ class: knight
 faith_path: Sun
 mentor: Solaire
 stats:
-    poise: 6
+    poise: 7
     poise_die: d10
     poise_points: 0
     max_hp: 10
-    damage_taken: 3
-    damage_note: electrocuted by the charge of the executioner
+    damage_taken: 2
+    damage_note: ""
     special: +2d when defending others
     parry_and_repost: 2 board success -> attack
 resources:
@@ -49,10 +49,10 @@ inventory:
 spells:
     - name: Prayer of Heal
       total_uses: 6
-      used: 1
+      used: 2
     - name: Seek Guidance
       total_uses: 1
       used: 1
     - name: Lightning
       total_uses: 10
-      used: 4
+      used: 5

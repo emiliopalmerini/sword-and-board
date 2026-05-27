@@ -14,23 +14,27 @@ import (
 
 // InventoryKeyMap defines key bindings for the inventory view
 type InventoryKeyMap struct {
-	Up     key.Binding
-	Down   key.Binding
-	Add    key.Binding
-	Delete key.Binding
-	Edit   key.Binding
-	Enter  key.Binding
-	Escape key.Binding
+	Up        key.Binding
+	Down      key.Binding
+	Add       key.Binding
+	Delete    key.Binding
+	Edit      key.Binding
+	Increment key.Binding
+	Decrement key.Binding
+	Enter     key.Binding
+	Escape    key.Binding
 }
 
 var DefaultInventoryKeyMap = InventoryKeyMap{
-	Up:     key.NewBinding(key.WithKeys("up", "k")),
-	Down:   key.NewBinding(key.WithKeys("down", "j")),
-	Add:    key.NewBinding(key.WithKeys("a")),
-	Delete: key.NewBinding(key.WithKeys("d")),
-	Edit:   key.NewBinding(key.WithKeys("e")),
-	Enter:  key.NewBinding(key.WithKeys("enter")),
-	Escape: key.NewBinding(key.WithKeys("esc")),
+	Up:        key.NewBinding(key.WithKeys("up", "k")),
+	Down:      key.NewBinding(key.WithKeys("down", "j")),
+	Add:       key.NewBinding(key.WithKeys("a")),
+	Delete:    key.NewBinding(key.WithKeys("d")),
+	Edit:      key.NewBinding(key.WithKeys("e")),
+	Increment: key.NewBinding(key.WithKeys("+", "=")),
+	Decrement: key.NewBinding(key.WithKeys("-")),
+	Enter:     key.NewBinding(key.WithKeys("enter")),
+	Escape:    key.NewBinding(key.WithKeys("esc")),
 }
 
 // InventoryMode represents the current mode of the inventory view
@@ -147,6 +151,10 @@ func (m *InventoryModel) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.nameInput.Focus()
 			return m, textinput.Blink
 		}
+	case key.Matches(msg, m.keyMap.Increment):
+		return m.adjustSelectedQuantity(1)
+	case key.Matches(msg, m.keyMap.Decrement):
+		return m.adjustSelectedQuantity(-1)
 	case key.Matches(msg, m.keyMap.Delete):
 		if m.selectedIndex < len(m.Character.Inventory) {
 			m.mode = InventoryModeConfirmDelete
@@ -208,13 +216,28 @@ func (m *InventoryModel) updateConfirmDelete(msg tea.KeyMsg) (tea.Model, tea.Cmd
 			m.selectedIndex--
 		}
 		m.mode = InventoryModeNormal
-		return m, func() tea.Msg {
-			return CharacterUpdatedMsg{Character: m.Character}
-		}
+		return m, characterUpdatedCmd(m.Character)
 	case "n", "N", "esc":
 		m.mode = InventoryModeNormal
 	}
 	return m, nil
+}
+
+func (m *InventoryModel) adjustSelectedQuantity(delta int) (tea.Model, tea.Cmd) {
+	if m.selectedIndex < 0 || m.selectedIndex >= len(m.Character.Inventory) {
+		return m, nil
+	}
+
+	item := &m.Character.Inventory[m.selectedIndex]
+	if delta < 0 && item.Quantity <= 1 {
+		return m, statusCmd("Quantity is already 1. Press [d] to delete.", true)
+	}
+
+	item.Quantity += delta
+	return m, tea.Batch(
+		characterUpdatedCmd(m.Character),
+		statusCmd(fmt.Sprintf("%s quantity: %d", item.Name, item.Quantity), false),
+	)
 }
 
 func (m *InventoryModel) clearInputs() {
@@ -248,9 +271,9 @@ func (m *InventoryModel) submitItem() (tea.Model, tea.Cmd) {
 		}
 	}
 
-	quantity := 1
-	if q := m.quantityInput.Value(); q != "" {
-		fmt.Sscanf(q, "%d", &quantity)
+	quantity, err := parsePositiveInt(m.quantityInput.Value(), 1)
+	if err != nil {
+		return m, statusCmd("Quantity must be a positive number", true)
 	}
 
 	itemType := domain.ItemTypeEquipment
@@ -275,9 +298,7 @@ func (m *InventoryModel) submitItem() (tea.Model, tea.Cmd) {
 	m.mode = InventoryModeNormal
 	m.clearInputs()
 
-	return m, func() tea.Msg {
-		return CharacterUpdatedMsg{Character: m.Character}
-	}
+	return m, characterUpdatedCmd(m.Character)
 }
 
 // IsInputMode returns true when the view is capturing text input
@@ -314,11 +335,10 @@ func (m *InventoryModel) View() string {
 		return b.String()
 	}
 
-	// Group items by type
-	itemsByType := m.Character.ItemsByType()
+	// Group items by type while preserving original indexes for edit/delete.
+	itemsByType := m.inventoryRowsByType()
 	typeOrder := []domain.ItemType{domain.ItemTypeWeapon, domain.ItemTypeEquipment, domain.ItemTypeConsumable}
 
-	currentIdx := 0
 	for _, itemType := range typeOrder {
 		items, ok := itemsByType[itemType]
 		if !ok || len(items) == 0 {
@@ -338,15 +358,9 @@ func (m *InventoryModel) View() string {
 		b.WriteString("  " + typeStyle.Render(string(itemType)+"s") + "\n")
 
 		// Items in this type
-		for _, item := range items {
-			// Find this item's index in the main inventory
-			itemIdx := -1
-			for i, invItem := range m.Character.Inventory {
-				if invItem.Name == item.Name && invItem.Type == item.Type {
-					itemIdx = i
-					break
-				}
-			}
+		for _, row := range items {
+			item := row.item
+			itemIdx := row.index
 
 			cursor := "    "
 			nameStyle := styles.NormalStyle
@@ -365,8 +379,6 @@ func (m *InventoryModel) View() string {
 				notes = " " + styles.DimmedStyle.Render("— "+item.Notes)
 			}
 			b.WriteString(fmt.Sprintf("%s%s%s%s\n", cursor, name, qty, notes))
-
-			currentIdx++
 		}
 		b.WriteString("\n")
 	}
@@ -376,11 +388,28 @@ func (m *InventoryModel) View() string {
 		styles.KeyStyle.Render("[j/k]") + " select",
 		styles.KeyStyle.Render("[a]") + " add",
 		styles.KeyStyle.Render("[e]") + " edit",
+		styles.KeyStyle.Render("[+/-]") + " qty",
 		styles.KeyStyle.Render("[d]") + " delete",
 	}
 	b.WriteString(styles.HelpStyle.Render(strings.Join(help, "  ")))
 
 	return b.String()
+}
+
+type inventoryRow struct {
+	index int
+	item  domain.Item
+}
+
+func (m *InventoryModel) inventoryRowsByType() map[domain.ItemType][]inventoryRow {
+	result := make(map[domain.ItemType][]inventoryRow)
+	for i, item := range m.Character.Inventory {
+		result[item.Type] = append(result[item.Type], inventoryRow{
+			index: i,
+			item:  item,
+		})
+	}
+	return result
 }
 
 func (m *InventoryModel) viewInputForm() string {

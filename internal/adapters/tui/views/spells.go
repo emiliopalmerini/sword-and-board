@@ -20,6 +20,7 @@ type SpellsKeyMap struct {
 	Restore key.Binding
 	Rest    key.Binding
 	Add     key.Binding
+	Edit    key.Binding
 	Delete  key.Binding
 	Enter   key.Binding
 	Escape  key.Binding
@@ -32,6 +33,7 @@ var DefaultSpellsKeyMap = SpellsKeyMap{
 	Restore: key.NewBinding(key.WithKeys("+", "=")),
 	Rest:    key.NewBinding(key.WithKeys("r")),
 	Add:     key.NewBinding(key.WithKeys("a")),
+	Edit:    key.NewBinding(key.WithKeys("e")),
 	Delete:  key.NewBinding(key.WithKeys("d")),
 	Enter:   key.NewBinding(key.WithKeys("enter")),
 	Escape:  key.NewBinding(key.WithKeys("esc")),
@@ -43,6 +45,7 @@ type SpellsMode int
 const (
 	SpellsModeNormal SpellsMode = iota
 	SpellsModeAdd
+	SpellsModeEdit
 	SpellsModeConfirmDelete
 )
 
@@ -90,8 +93,8 @@ func (m *SpellsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch m.mode {
 		case SpellsModeNormal:
 			return m.updateNormal(msg)
-		case SpellsModeAdd:
-			return m.updateAddMode(msg)
+		case SpellsModeAdd, SpellsModeEdit:
+			return m.updateInputMode(msg)
 		case SpellsModeConfirmDelete:
 			return m.updateConfirmDelete(msg)
 		}
@@ -124,21 +127,31 @@ func (m *SpellsModel) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keyMap.Restore):
 		if m.selectedIndex < len(m.Character.Spells) {
 			if m.Character.Spells[m.selectedIndex].Restore() {
-				return m, func() tea.Msg {
-					return CharacterUpdatedMsg{Character: m.Character}
-				}
+				return m, characterUpdatedCmd(m.Character)
 			}
+			return m, statusCmd("Spell is already unused.", true)
 		}
 	case key.Matches(msg, m.keyMap.Rest):
 		m.Character.Rest()
-		return m, func() tea.Msg {
-			return StatusMsg{Message: "Rested at bonfire. All spells restored.", IsError: false}
-		}
+		return m, tea.Batch(
+			characterUpdatedCmd(m.Character),
+			statusCmd("Rested at bonfire. All spells restored.", false),
+		)
 	case key.Matches(msg, m.keyMap.Add):
 		m.mode = SpellsModeAdd
 		m.clearInputs()
 		m.nameInput.Focus()
 		return m, textinput.Blink
+	case key.Matches(msg, m.keyMap.Edit):
+		if m.selectedIndex < len(m.Character.Spells) {
+			m.mode = SpellsModeEdit
+			spell := m.Character.Spells[m.selectedIndex]
+			m.nameInput.SetValue(spell.Name)
+			m.usesInput.SetValue(fmt.Sprintf("%d", spell.TotalUses))
+			m.activeInput = 0
+			m.nameInput.Focus()
+			return m, textinput.Blink
+		}
 	case key.Matches(msg, m.keyMap.Delete):
 		if m.selectedIndex < len(m.Character.Spells) {
 			m.mode = SpellsModeConfirmDelete
@@ -147,7 +160,7 @@ func (m *SpellsModel) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *SpellsModel) updateAddMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *SpellsModel) updateInputMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, m.keyMap.Escape):
 		m.mode = SpellsModeNormal
@@ -187,9 +200,7 @@ func (m *SpellsModel) updateConfirmDelete(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.selectedIndex--
 		}
 		m.mode = SpellsModeNormal
-		return m, func() tea.Msg {
-			return CharacterUpdatedMsg{Character: m.Character}
-		}
+		return m, characterUpdatedCmd(m.Character)
 	case "n", "N", "esc":
 		m.mode = SpellsModeNormal
 	}
@@ -222,9 +233,9 @@ func (m *SpellsModel) submitSpell() (tea.Model, tea.Cmd) {
 		}
 	}
 
-	uses := 1
-	if u := m.usesInput.Value(); u != "" {
-		fmt.Sscanf(u, "%d", &uses)
+	uses, err := parsePositiveInt(m.usesInput.Value(), 1)
+	if err != nil {
+		return m, statusCmd("Total uses must be a positive number", true)
 	}
 
 	spell := domain.Spell{
@@ -233,27 +244,34 @@ func (m *SpellsModel) submitSpell() (tea.Model, tea.Cmd) {
 		Used:      0,
 	}
 
-	m.Character.AddSpell(spell)
-	m.selectedIndex = len(m.Character.Spells) - 1
+	if m.mode == SpellsModeAdd {
+		m.Character.AddSpell(spell)
+		m.selectedIndex = len(m.Character.Spells) - 1
+	} else {
+		spell.Used = m.Character.Spells[m.selectedIndex].Used
+		if spell.Used > spell.TotalUses {
+			spell.Used = spell.TotalUses
+		}
+		m.Character.Spells[m.selectedIndex] = spell
+	}
+
 	m.mode = SpellsModeNormal
 	m.clearInputs()
 
-	return m, func() tea.Msg {
-		return CharacterUpdatedMsg{Character: m.Character}
-	}
+	return m, characterUpdatedCmd(m.Character)
 }
 
 // IsInputMode returns true when the view is capturing text input
 func (m *SpellsModel) IsInputMode() bool {
-	return m.mode == SpellsModeAdd
+	return m.mode == SpellsModeAdd || m.mode == SpellsModeEdit
 }
 
 // View implements tea.Model
 func (m *SpellsModel) View() string {
 	var b strings.Builder
 
-	if m.mode == SpellsModeAdd {
-		return m.viewAddForm()
+	if m.mode == SpellsModeAdd || m.mode == SpellsModeEdit {
+		return m.viewInputForm()
 	}
 
 	if m.mode == SpellsModeConfirmDelete {
@@ -299,6 +317,7 @@ func (m *SpellsModel) View() string {
 		styles.KeyStyle.Render("[+/-]") + " restore/use",
 		styles.KeyStyle.Render("[r]") + " rest",
 		styles.KeyStyle.Render("[a]") + " add",
+		styles.KeyStyle.Render("[e]") + " edit",
 		styles.KeyStyle.Render("[d]") + " delete",
 	}
 	b.WriteString(styles.HelpStyle.Render(strings.Join(help, "  ")))
@@ -306,10 +325,14 @@ func (m *SpellsModel) View() string {
 	return b.String()
 }
 
-func (m *SpellsModel) viewAddForm() string {
+func (m *SpellsModel) viewInputForm() string {
 	var b strings.Builder
 
-	b.WriteString(styles.SectionStyle.Render("ADD SPELL") + "\n\n")
+	title := "ADD SPELL"
+	if m.mode == SpellsModeEdit {
+		title = "EDIT SPELL"
+	}
+	b.WriteString(styles.SectionStyle.Render(title) + "\n\n")
 
 	inputs := []struct {
 		label string

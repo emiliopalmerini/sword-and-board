@@ -142,6 +142,12 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return a, nil
 			}
 
+			if !a.showHelp && a.currentView == views.ViewStats && a.statsView.HandlesBeforeGlobal(msg) {
+				newModel, cmd := a.statsView.Update(msg)
+				a.statsView = newModel.(*views.StatsModel)
+				return a, cmd
+			}
+
 			// Global key bindings
 			switch {
 			case key.Matches(msg, a.keyMap.Quit):
@@ -345,11 +351,12 @@ func (a *App) renderFullHelp() string {
 		desc string
 	}{
 		{"1/2/3", "Switch between Stats/Inventory/Spells"},
-		{"tab / h / l", "Cycle views (prev/next)"},
+		{"tab / shift+tab", "Cycle views (next/prev)"},
 		{"j/k or ↑/↓", "Navigate lists"},
+		{"d / h", "Stats: take damage / heal"},
 		{"e", "Edit selected item"},
 		{"a", "Add new item"},
-		{"d", "Delete selected item"},
+		{"d", "Inventory/Spells: delete selected item"},
 		{"+/-", "Use/restore spell or resource"},
 		{"r", "Rest (restore all)"},
 		{"s", "Save character"},

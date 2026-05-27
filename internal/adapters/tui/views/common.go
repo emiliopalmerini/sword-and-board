@@ -1,6 +1,12 @@
 package views
 
 import (
+	"fmt"
+	"strconv"
+	"strings"
+
+	tea "github.com/charmbracelet/bubbletea"
+
 	"sword-and-board/internal/domain"
 )
 
@@ -59,4 +65,30 @@ type StatusMsg struct {
 // ClearStatusMsg signals the App to clear the status line when its Gen matches the current generation.
 type ClearStatusMsg struct {
 	Gen int
+}
+
+func characterUpdatedCmd(character *domain.Character) tea.Cmd {
+	return func() tea.Msg {
+		return CharacterUpdatedMsg{Character: character}
+	}
+}
+
+func statusCmd(message string, isError bool) tea.Cmd {
+	return func() tea.Msg {
+		return StatusMsg{Message: message, IsError: isError}
+	}
+}
+
+func parsePositiveInt(value string, fallback int) (int, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return fallback, nil
+	}
+
+	n, err := strconv.Atoi(value)
+	if err != nil || n <= 0 {
+		return 0, fmt.Errorf("must be a positive number")
+	}
+
+	return n, nil
 }
