@@ -3,17 +3,17 @@ class: knight
 faith_path: Sun
 mentor: Solaire
 stats:
-    poise: 7
+    poise: 6
     poise_die: d10
     poise_points: 0
     max_hp: 10
-    damage_taken: 2
+    damage_taken: 0
     special: +2d when defending others
     parry_and_repost: 2 board success -> attack
 resources:
     - name: Estus Flask
       total: 2
-      remaining: 0
+      remaining: 1
 inventory:
     - name: Broadsword
       quantity: 1
@@ -48,10 +48,10 @@ inventory:
 spells:
     - name: Prayer of Heal
       total_uses: 6
-      used: 3
+      used: 0
     - name: Seek Guidance
       total_uses: 1
       used: 1
     - name: Lightning
       total_uses: 10
-      used: 6
+      used: 3
